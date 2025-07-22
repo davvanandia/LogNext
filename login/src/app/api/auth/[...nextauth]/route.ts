@@ -3,14 +3,13 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { JWT } from "next-auth/jwt";
+import { Session, User } from "next-auth";
 
 const prisma = new PrismaClient();
 
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
-  session: {
-    strategy: "jwt",
-  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -19,43 +18,39 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.username || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { username: credentials.username },
         });
 
-        if (!user || !user.password) return null;
+        if (!user) return null;
 
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
+        const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
 
         return {
           id: user.id,
           name: user.username,
-          role: user.role ?? "user", // Fallback role
+          role: user.role ?? "user", // default role user
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: JWT; user?: User | undefined }) {
       if (user) {
         token.name = user.name;
-        token.role = user.role;
+        // @ts-ignore
+        token.role = user.role || "user";
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
         session.user.name = token.name as string;
-        (session.user as any).role = token.role as string; // tambahkan `role` secara manual karena tipe default NextAuth tidak menyertakan `role`
+        // @ts-ignore
+        session.user.role = token.role as string;
       }
       return session;
     },
