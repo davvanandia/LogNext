@@ -17,30 +17,24 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) {
-          throw new Error("Missing username or password");
-        }
+  if (!credentials?.username || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { username: credentials.username },
-        });
+  const user = await prisma.user.findUnique({
+    where: { username: credentials.username },
+  });
 
-        if (!user) {
-          throw new Error("User not found");
-        }
+  if (!user || !user.password) return null;
 
-        const isValid = await bcrypt.compare(credentials.password, user.password);
+  const isValid = await bcrypt.compare(credentials.password, user.password);
 
-        if (!isValid) {
-          throw new Error("Invalid password");
-        }
+  if (!isValid) return null;
 
-        return {
-          id: user.id,
-          name: user.name || user.username,
-          email: user.username,
-        };
-      },
+  return {
+    id: user.id,
+    name: user.name ?? user.username,
+    role: user.role ?? "user", // hanya jika kamu pakai role
+  };
+}
     }),
   ],
   pages: {

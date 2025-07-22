@@ -7,7 +7,10 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 const handler = NextAuth({
-  adapter: PrismaAdapter(prisma), // ✅ Tambahkan adapter di sini
+  adapter: PrismaAdapter(prisma),
+  session: {
+    strategy: "jwt",
+  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -16,14 +19,18 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        if (!credentials?.username || !credentials?.password) {
+          return null;
+        }
+
         const user = await prisma.user.findUnique({
-          where: { username: credentials?.username },
+          where: { username: credentials.username },
         });
 
-        if (!user) return null;
+        if (!user || !user.password) return null;
 
         const isValid = await bcrypt.compare(
-          credentials!.password,
+          credentials.password,
           user.password
         );
 
@@ -32,7 +39,7 @@ const handler = NextAuth({
         return {
           id: user.id,
           name: user.username,
-          role: user.role, // ✅ Role disimpan ke JWT & session
+          role: user.role ?? "user", // Fallback role
         };
       },
     }),
@@ -46,9 +53,9 @@ const handler = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (session?.user) {
+      if (session.user) {
         session.user.name = token.name as string;
-        session.user.role = token.role as string;
+        (session.user as any).role = token.role as string; // tambahkan `role` secara manual karena tipe default NextAuth tidak menyertakan `role`
       }
       return session;
     },
