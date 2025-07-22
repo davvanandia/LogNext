@@ -10,6 +10,8 @@ async function main() {
     data: {
       username: "admin",
       password: hashedPassword,
+      name: "SOC Manager",
+      role: "admin",
     },
   });
 
