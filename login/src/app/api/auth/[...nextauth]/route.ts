@@ -1,11 +1,13 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 const handler = NextAuth({
+  adapter: PrismaAdapter(prisma), // ✅ Tambahkan adapter di sini
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -30,7 +32,7 @@ const handler = NextAuth({
         return {
           id: user.id,
           name: user.username,
-          role: user.role, // ⬅️ tambahkan role di sini
+          role: user.role, // ✅ Role disimpan ke JWT & session
         };
       },
     }),
@@ -39,14 +41,14 @@ const handler = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.name = user.name;
-        token.role = user.role; // ⬅️ tambahkan role di token
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session?.user) {
         session.user.name = token.name as string;
-        session.user.role = token.role as string; // ⬅️ tambahkan role di session
+        session.user.role = token.role as string;
       }
       return session;
     },
