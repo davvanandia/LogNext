@@ -29,27 +29,30 @@ const handler = NextAuth({
 
         return {
           id: user.id,
-          name: user.username, // nama untuk session.user.name
+          name: user.username,
+          role: user.role, // ⬅️ tambahkan role di sini
         };
       },
     }),
   ],
   callbacks: {
-    async session({ session, token }) {
-        if (session?.user && token?.name) {
-            session.user.name = token.name as string;
-        }
-        return session;
-    },
     async jwt({ token, user }) {
       if (user) {
-        token.name = user.name; // masukin ke token
+        token.name = user.name;
+        token.role = user.role; // ⬅️ tambahkan role di token
       }
       return token;
     },
+    async session({ session, token }) {
+      if (session?.user) {
+        session.user.name = token.name as string;
+        session.user.role = token.role as string; // ⬅️ tambahkan role di session
+      }
+      return session;
+    },
   },
   pages: {
-    signIn: "/login", // redirect ke /login kalau belum login
+    signIn: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
 });
